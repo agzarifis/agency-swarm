@@ -9,7 +9,7 @@ from agency_swarm.util.oai import get_openai_client
 
 
 class Thread:
-    id: str
+    id: str = None
     thread = None
     run = None
 
@@ -20,8 +20,11 @@ class Thread:
 
     def get_completion(self, message: str, yield_messages=True):
         if not self.thread:
-            self.thread = self.client.beta.threads.create()
-            self.id = self.thread.id
+            if self.id:
+                self.thread = self.client.beta.threads.retrieve(self.id)
+            else:
+                self.thread = self.client.beta.threads.create()
+                self.id = self.thread.id
 
         # Check if a run is active
         if self.run and self.run.status in ['queued', 'in_progress']:

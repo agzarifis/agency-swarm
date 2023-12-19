@@ -59,26 +59,12 @@ class Agent():
         self._assistant: Any = None
         self._shared_instructions = None
 
-        self.client = get_openai_client()
-
         if os.path.isfile(self.instructions):
             self._read_instructions(self.instructions)
         elif os.path.isfile(os.path.join(self.get_class_folder_path(), self.instructions)):
             self._read_instructions(os.path.join(self.get_class_folder_path(), self.instructions))
 
         self._upload_files()
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # Remove the client attribute
-        del state['client']
-        return state
-
-    def __setstate__(self, state):
-        # Restore the object's state
-        self.__dict__.update(state)
-        # Reinitialize the client attribute
-        self.client = get_openai_client()
         
     def init_oai(self):
         """
@@ -92,10 +78,11 @@ class Agent():
 
         # check if settings.json exists
         path = self.get_settings_path()
+        client = get_openai_client()
 
         # load assistant from id
         if self.id:
-            self.assistant = self.client.beta.assistants.retrieve(self.id)
+            self.assistant = client.beta.assistants.retrieve(self.id)
             # update assistant if parameters are different
             if not self._check_parameters(self.assistant.model_dump()):
                 self._update_assistant()
@@ -108,7 +95,7 @@ class Agent():
                 # iterate settings and find the assistant with the same name
                 for assistant_settings in settings:
                     if assistant_settings['name'] == self.name:
-                        self.assistant = self.client.beta.assistants.retrieve(assistant_settings['id'])
+                        self.assistant = client.beta.assistants.retrieve(assistant_settings['id'])
                         self.id = assistant_settings['id']
                         # update assistant if parameters are different
                         if not self._check_parameters(self.assistant.model_dump()):
@@ -117,7 +104,7 @@ class Agent():
                         self._update_settings()
                         return self
         # create assistant if settings.json does not exist or assistant with the same name does not exist
-        self.assistant = self.client.beta.assistants.create(
+        self.assistant = client.beta.assistants.create(
             name=self.name,
             description=self.description,
             instructions=self.instructions,
@@ -154,7 +141,8 @@ class Agent():
             "model": self.model
         }
         params = {k: v for k, v in params.items() if v}
-        self.assistant = self.client.beta.assistants.update(
+        client = get_openai_client()
+        self.assistant = client.beta.assistants.update(
             self.id,
             **params,
         )
@@ -224,6 +212,7 @@ class Agent():
             self.instructions =  f.read()
 
     def _upload_files(self):
+        client = get_openai_client()
         if isinstance(self.files_folder, str):
             f_path = self.files_folder
 
@@ -245,7 +234,7 @@ class Agent():
                     else:
                         print("Uploading new file... " + os.path.basename(f_path))
                         with open(f_path, 'rb') as f:
-                            file_id = self.client.files.create(file=f, purpose="assistants").id
+                            file_id = client.files.create(file=f, purpose="assistants").id
                             self.file_ids.append(file_id)
                             self._add_id_to_file(f_path, file_id)
 
@@ -340,7 +329,8 @@ class Agent():
         return tools
 
     def delete_assistant(self):
-        self.client.beta.assistants.delete(self.id)
+        client = get_openai_client()
+        client.beta.assistants.delete(self.id)
         self._delete_settings()
 
     def _delete_settings(self):

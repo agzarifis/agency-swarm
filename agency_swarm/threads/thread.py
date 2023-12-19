@@ -16,26 +16,14 @@ class Thread:
     def __init__(self, agent: Literal[Agent, User], recipient_agent: Agent):
         self.agent = agent
         self.recipient_agent = recipient_agent
-        self.client = get_openai_client()
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # Remove the client attribute
-        del state['client']
-        return state
-
-    def __setstate__(self, state):
-        # Restore the object's state
-        self.__dict__.update(state)
-        # Reinitialize the client attribute
-        self.client = get_openai_client()
 
     def get_completion(self, message: str, yield_messages=True):
+        client = get_openai_client()
         if not self.thread:
             if self.id:
-                self.thread = self.client.beta.threads.retrieve(self.id)
+                self.thread = client.beta.threads.retrieve(self.id)
             else:
-                self.thread = self.client.beta.threads.create()
+                self.thread = client.beta.threads.create()
                 self.id = self.thread.id
 
         # Check if a run is active
@@ -43,13 +31,13 @@ class Thread:
             while self.run.status in ['queued', 'in_progress']:
                 print("Detected active run - sleeping")
                 time.sleep(0.5)
-                self.run = self.client.beta.threads.runs.retrieve(
+                self.run = client.beta.threads.runs.retrieve(
                     thread_id=self.thread.id,
                     run_id=self.run.id
                 )
 
         # send message
-        self.client.beta.threads.messages.create(
+        client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
             content=message
@@ -59,7 +47,7 @@ class Thread:
             yield MessageOutput("text", self.agent.name, self.recipient_agent.name, message)
 
         # create run
-        self.run = self.client.beta.threads.runs.create(
+        self.run = client.beta.threads.runs.create(
             thread_id=self.thread.id,
             assistant_id=self.recipient_agent.id,
         )
@@ -68,7 +56,7 @@ class Thread:
             # wait until run completes
             while self.run.status in ['queued', 'in_progress']:
                 time.sleep(0.5)
-                self.run = self.client.beta.threads.runs.retrieve(
+                self.run = client.beta.threads.runs.retrieve(
                     thread_id=self.thread.id,
                     run_id=self.run.id
                 )
@@ -98,7 +86,7 @@ class Thread:
                         {"tool_call_id": tool_call.id, "output": str(output)})
 
                 # submit tool outputs
-                self.run = self.client.beta.threads.runs.submit_tool_outputs(
+                self.run = client.beta.threads.runs.submit_tool_outputs(
                     thread_id=self.thread.id,
                     run_id=self.run.id,
                     tool_outputs=tool_outputs
@@ -108,7 +96,7 @@ class Thread:
                 raise Exception("Run Failed. Error: ", self.run.last_error)
             # return assistant message
             else:
-                messages = self.client.beta.threads.messages.list(
+                messages = client.beta.threads.messages.list(
                     thread_id=self.id
                 )
                 message = messages.data[0].content[0].text.value

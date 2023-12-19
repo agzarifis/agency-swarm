@@ -68,6 +68,18 @@ class Agent():
 
         self._upload_files()
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # Remove the client attribute
+        del state['client']
+        return state
+
+    def __setstate__(self, state):
+        # Restore the object's state
+        self.__dict__.update(state)
+        # Reinitialize the client attribute
+        self.client = get_openai_client()
+        
     def init_oai(self):
         """
         Initializes the OpenAI assistant for the agent.

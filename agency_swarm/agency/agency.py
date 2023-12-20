@@ -27,12 +27,14 @@ class Agency:
 
         This constructor initializes various components of the Agency, including CEO, agents, threads, and user interactions. It parses the agency chart to set up the organizational structure and initializes the messaging tools, agents, and threads necessary for the operation of the agency. Additionally, it prepares a main thread for user interactions.
         """
-        self.ceo = None
+        self.id = None
+        self.user_proxy = None
         self.agents = []
         self.agents_and_threads = {}
 
         if os.path.isfile(os.path.join(self.get_class_folder_path(), shared_instructions)):
-            self._read_instructions(os.path.join(self.get_class_folder_path(), shared_instructions))
+            self._read_instructions(os.path.join(
+                self.get_class_folder_path(), shared_instructions))
         elif os.path.isfile(shared_instructions):
             self._read_instructions(shared_instructions)
         else:
@@ -44,7 +46,16 @@ class Agency:
         self._init_threads()
 
         self.user = User()
-        self.main_thread = Thread(self.user, self.ceo)
+        self.main_thread = Thread(self.user, self.user_proxy)
+
+    @classmethod
+    def from_model(cls, agency_model):
+        agency = cls.__new__(cls)
+        agency.id = agency_model.id
+        # agency.user_proxy = Agent.from_model(agency_model.user_proxy)
+        # agency.agents = [Agent.from_model(agent_model) for agent_model in agency_model.agents]
+        agency.main_thread = Thread.from_model(agency_model.main_thread)
+        return agency
 
     def get_completion(self, message: str, yield_messages=True):
         """
@@ -57,7 +68,8 @@ class Agency:
         Returns:
         Generator or final response: Depending on the 'yield_messages' flag, this method returns either a generator yielding intermediate messages or the final response from the main thread.
         """
-        gen = self.main_thread.get_completion(message=message, yield_messages=yield_messages)
+        gen = self.main_thread.get_completion(
+            message=message, yield_messages=yield_messages)
 
         if not yield_messages:
             while True:
@@ -68,7 +80,7 @@ class Agency:
 
         return gen
 
-    def demo_gradio(self, height=900, share : bool = False):
+    def demo_gradio(self, height=900, share: bool = False):
         """
         Launches a Gradio-based demo interface for the agency chatbot.
 
@@ -149,16 +161,16 @@ class Agency:
         agency_chart: A structure representing the hierarchical organization of agents within the agency.
                     It can contain Agent objects and lists of Agent objects.
 
-        This method iterates through each node in the agency chart. If a node is an Agent, it is set as the CEO if not already assigned.
+        This method iterates through each node in the agency chart. If a node is an Agent, it is set as the User Proxy if not already assigned.
         If a node is a list, it iterates through the agents in the list, adding them to the agency and establishing communication
         threads between them. It raises an exception if the agency chart is invalid or if multiple CEOs are defined.
         """
         for node in agency_chart:
             if isinstance(node, Agent):
-                if self.ceo:
+                if self.user_proxy:
                     raise Exception("Only 1 ceo is supported for now.")
-                self.ceo = node
-                self._add_agent(self.ceo)
+                self.user_proxy = node
+                self._add_agent(self.user_proxy)
 
             elif isinstance(node, list):
                 for i, agent in enumerate(node):
@@ -289,7 +301,8 @@ class Agency:
             recipient_names = list(threads.keys())
             recipient_agents = self.get_agents_by_names(recipient_names)
             agent = self.get_agent_by_name(agent_name)
-            agent.add_tool(self._create_send_message_tool(agent, recipient_agents))
+            agent.add_tool(self._create_send_message_tool(
+                agent, recipient_agents))
 
     def _create_send_message_tool(self, agent: Agent, recipient_agents: List[Agent]):
         """
@@ -303,7 +316,8 @@ class Agency:
         SendMessage: A SendMessage tool class that is dynamically created and configured for the given agent and its recipient agents. This tool allows the agent to send messages to the specified recipients, facilitating inter-agent communication within the agency.
         """
         recipient_names = [agent.name for agent in recipient_agents]
-        recipients = Enum("recipient", {name: name for name in recipient_names})
+        recipients = Enum(
+            "recipient", {name: name for name in recipient_names})
 
         agent_descriptions = ""
         for recipient_agent in recipient_agents:
@@ -330,13 +344,15 @@ class Agency:
             @field_validator('recipient')
             def check_recipient(cls, value):
                 if value.value not in recipient_names:
-                    raise ValueError(f"Recipient {value} is not valid. Valid recipients are: {recipient_names}")
+                    raise ValueError(
+                        f"Recipient {value} is not valid. Valid recipients are: {recipient_names}")
                 return value
 
             @field_validator('caller_agent_name')
             def check_caller_agent_name(cls, value):
                 if value != agent.name:
-                    raise ValueError(f"Caller agent name must be {agent.name}.")
+                    raise ValueError(
+                        f"Caller agent name must be {agent.name}.")
                 return value
 
             def run(self):

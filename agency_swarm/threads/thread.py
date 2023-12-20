@@ -1,6 +1,6 @@
 import inspect
 import time
-from typing import Literal
+from typing import Union
 
 from agency_swarm.agents import Agent
 from agency_swarm.messages import MessageOutput
@@ -9,22 +9,33 @@ from agency_swarm.util.oai import get_openai_client
 
 
 class Thread:
-    id: str = None
+    id = None
+    api_id: str = None
     thread = None
     run = None
 
-    def __init__(self, agent: Literal[Agent, User], recipient_agent: Agent):
+    def __init__(self, agent: Union[Agent, User], recipient_agent: Agent):
         self.agent = agent
         self.recipient_agent = recipient_agent
+
+    @classmethod
+    def from_model(cls, thread_model):
+        thread = cls.__new__(cls)
+        thread.id = thread_model.id
+        thread.api_id = thread_model.api_id
+        thread.agent = User() if thread_model.agent is None else Agent.from_model(
+            thread_model.agent)
+        thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
+        return thread
 
     def get_completion(self, message: str, yield_messages=True):
         client = get_openai_client()
         if not self.thread:
-            if self.id:
-                self.thread = client.beta.threads.retrieve(self.id)
+            if self.api_id:
+                self.thread = client.beta.threads.retrieve(self.api_id)
             else:
                 self.thread = client.beta.threads.create()
-                self.id = self.thread.id
+                self.api_id = self.thread.id
 
         # Check if a run is active
         if self.run and self.run.status in ['queued', 'in_progress']:
@@ -97,7 +108,7 @@ class Thread:
             # return assistant message
             else:
                 messages = client.beta.threads.messages.list(
-                    thread_id=self.id
+                    thread_id=self.api_id
                 )
                 message = messages.data[0].content[0].text.value
 

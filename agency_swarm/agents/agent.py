@@ -15,7 +15,8 @@ class Agent():
     @property
     def assistant(self):
         if self._assistant is None:
-            raise Exception("Assistant is not initialized. Please run init_oai() first.")
+            raise Exception(
+                "Assistant is not initialized. Please run init_oai() first.")
         return self._assistant
 
     @assistant.setter
@@ -27,7 +28,8 @@ class Agent():
         return [tool for tool in self.tools if isinstance(tool, BaseTool)]
 
     def __init__(self, id: str = None, name: str = None, description: str = None, instructions: str = "",
-                 tools: List[Union[BaseTool, Retrieval, CodeInterpreter]] = None,
+                 tools: List[Union[BaseTool, Retrieval,
+                                   CodeInterpreter]] = None,
                  files_folder: Union[List[str], str] = None,
                  file_ids: List[str] = None, metadata: Dict[str, str] = None, model: str = "gpt-4-1106-preview"):
         """
@@ -62,10 +64,19 @@ class Agent():
         if os.path.isfile(self.instructions):
             self._read_instructions(self.instructions)
         elif os.path.isfile(os.path.join(self.get_class_folder_path(), self.instructions)):
-            self._read_instructions(os.path.join(self.get_class_folder_path(), self.instructions))
+            self._read_instructions(os.path.join(
+                self.get_class_folder_path(), self.instructions))
 
         self._upload_files()
-        
+
+    @classmethod
+    def from_model(cls, agent_model):
+        agent = cls.__new__(cls)
+        agent.id = agent_model.id
+        agent.name = agent_model.name
+        agent.tools = agent_model.tools
+        return agent
+
     def init_oai(self):
         """
         Initializes the OpenAI assistant for the agent.
@@ -95,7 +106,8 @@ class Agent():
                 # iterate settings and find the assistant with the same name
                 for assistant_settings in settings:
                     if assistant_settings['name'] == self.name:
-                        self.assistant = client.beta.assistants.retrieve(assistant_settings['id'])
+                        self.assistant = client.beta.assistants.retrieve(
+                            assistant_settings['id'])
                         self.id = assistant_settings['id']
                         # update assistant if parameters are different
                         if not self._check_parameters(self.assistant.model_dump()):
@@ -167,12 +179,14 @@ class Agent():
             return False
         if self.instructions != assistant_settings['instructions']:
             return False
-        tools_diff = DeepDiff(self.get_oai_tools(), assistant_settings['tools'], ignore_order=True)
+        tools_diff = DeepDiff(self.get_oai_tools(),
+                              assistant_settings['tools'], ignore_order=True)
         if tools_diff != {}:
             return False
         if set(self.file_ids) != set(assistant_settings['file_ids']):
             return False
-        metadata_diff = DeepDiff(self.metadata, assistant_settings['metadata'], ignore_order=True)
+        metadata_diff = DeepDiff(
+            self.metadata, assistant_settings['metadata'], ignore_order=True)
         if metadata_diff != {}:
             return False
         if self.model != assistant_settings['model']:
@@ -209,7 +223,7 @@ class Agent():
 
     def _read_instructions(self, path):
         with open(path, 'r') as f:
-            self.instructions =  f.read()
+            self.instructions = f.read()
 
     def _upload_files(self):
         client = get_openai_client()
@@ -217,7 +231,8 @@ class Agent():
             f_path = self.files_folder
 
             if not os.path.isdir(f_path):
-                f_path = os.path.join(self.get_class_folder_path(), self.files_folder)
+                f_path = os.path.join(
+                    self.get_class_folder_path(), self.files_folder)
 
             if os.path.isdir(f_path):
                 f_paths = os.listdir(f_path)
@@ -229,17 +244,21 @@ class Agent():
                 for f_path in f_paths:
                     file_id = self._get_id_from_file(f_path)
                     if file_id:
-                        print("File already uploaded. Skipping... " + os.path.basename(f_path))
+                        print("File already uploaded. Skipping... " +
+                              os.path.basename(f_path))
                         self.file_ids.append(file_id)
                     else:
-                        print("Uploading new file... " + os.path.basename(f_path))
+                        print("Uploading new file... " +
+                              os.path.basename(f_path))
                         with open(f_path, 'rb') as f:
-                            file_id = client.files.create(file=f, purpose="assistants").id
+                            file_id = client.files.create(
+                                file=f, purpose="assistants").id
                             self.file_ids.append(file_id)
                             self._add_id_to_file(f_path, file_id)
 
                     if Retrieval not in self.tools:
-                        print("Detected files without Retrieval. Adding Retrieval tool...")
+                        print(
+                            "Detected files without Retrieval. Adding Retrieval tool...")
                         self.add_tool(Retrieval)
             else:
                 raise Exception("Files folder path is not a directory.")
@@ -303,7 +322,8 @@ class Agent():
         if self._shared_instructions is None:
             self._shared_instructions = instructions
         else:
-            self.instructions = self.instructions.replace(self._shared_instructions, "")
+            self.instructions = self.instructions.replace(
+                self._shared_instructions, "")
             self.instructions = self.instructions.strip().strip("\n")
             self._shared_instructions = instructions
 

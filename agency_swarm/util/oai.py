@@ -1,9 +1,9 @@
 import openai
 import instructor
-from clients import build_client_from_user_session
 
 
 def get_openai_client():
+    from clients import build_client_from_user_session
     client = build_client_from_user_session()
     client = instructor.patch(client=client)
     return client

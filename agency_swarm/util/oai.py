@@ -1,24 +1,11 @@
 import openai
-import threading
-import os
 import instructor
-
-from dotenv import load_dotenv
-load_dotenv()
-
-client_lock = threading.Lock()
-client = None
+from clients import build_client_from_user_session
 
 
 def get_openai_client():
-    global client
-    with client_lock:
-        if client is None:
-            # Check if the API key is set
-            api_key = openai.api_key or os.getenv('OPENAI_API_KEY')
-            if api_key is None:
-                raise ValueError("OpenAI API key is not set. Please set it using set_openai_key.")
-            client = instructor.patch(openai.OpenAI(api_key=api_key))
+    client = build_client_from_user_session()
+    client = instructor.patch(client=client)
     return client
 
 

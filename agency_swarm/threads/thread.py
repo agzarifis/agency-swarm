@@ -23,8 +23,7 @@ class Thread:
         thread = cls.__new__(cls)
         thread.id = thread_model.id
         thread.api_id = thread_model.api_id
-        thread.agent = User() if thread_model.agent is None else Agent.from_model(
-            thread_model.agent)
+        thread.agent = User() if thread_model.agent is None else Agent.from_model(thread_model.agent)
         thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
         return thread
 
@@ -116,6 +115,11 @@ class Thread:
                     yield MessageOutput("text", self.recipient_agent.name, self.agent.name, message)
 
                 return message
+            
+    def get_messages(self):
+        if self.api_id:
+            client = get_openai_client()
+            return client.beta.threads.messages.list(thread_id=self.api_id, order="asc", limit=100)
 
     def _execute_tool(self, tool_call):
         tools = self.recipient_agent.tools

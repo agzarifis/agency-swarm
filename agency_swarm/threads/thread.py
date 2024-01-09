@@ -27,7 +27,7 @@ class Thread:
         thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
         return thread
 
-    def get_completion(self, message: str, yield_messages=True):
+    def get_completion(self, message: str, yield_messages=True, **kwargs):
         client = get_openai_client()
         if not self.thread:
             if self.api_id:
@@ -79,7 +79,7 @@ class Thread:
                     if yield_messages:
                         yield MessageOutput("function", self.recipient_agent.name, self.agent.name, str(tool_call.function))
 
-                    output = self._execute_tool(tool_call)
+                    output = self._execute_tool(tool_call, **kwargs)
                     if inspect.isgenerator(output):
                         try:
                             while True:
@@ -121,7 +121,7 @@ class Thread:
             client = get_openai_client()
             return client.beta.threads.messages.list(thread_id=self.api_id, order="asc", limit=100)
 
-    def _execute_tool(self, tool_call):
+    def _execute_tool(self, tool_call, **kwargs):
         tools = self.recipient_agent.tools
         tool = next((tool for tool in tools if tool.__class__.__name__ ==
                     tool_call.function.name), None)
@@ -144,7 +144,7 @@ class Thread:
             tool = type(tool).model_validate(tool)
 
             # get outputs from the tool
-            output = tool.run()
+            output = tool.run(**kwargs)
 
             return output
         except Exception as e:

@@ -57,7 +57,7 @@ class Agency:
         agency.main_thread = Thread.from_model(agency_model.main_thread)
         return agency
 
-    def get_completion(self, message: str, yield_messages=True):
+    def get_completion(self, message: str, yield_messages=True, **kwargs):
         """
         Retrieves the completion for a given message from the main thread.
 
@@ -69,7 +69,7 @@ class Agency:
         Generator or final response: Depending on the 'yield_messages' flag, this method returns either a generator yielding intermediate messages or the final response from the main thread.
         """
         gen = self.main_thread.get_completion(
-            message=message, yield_messages=yield_messages)
+            message=message, yield_messages=yield_messages, **kwargs)
 
         if not yield_messages:
             while True:

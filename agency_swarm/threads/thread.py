@@ -23,7 +23,8 @@ class Thread:
         thread = cls.__new__(cls)
         thread.id = thread_model.id
         thread.api_id = thread_model.api_id
-        thread.agent = User() if thread_model.agent is None else Agent.from_model(thread_model.agent)
+        thread.agent = User() if thread_model.agent is None else Agent.from_model(
+            thread_model.agent)
         thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
         return thread
 
@@ -115,7 +116,7 @@ class Thread:
                     yield MessageOutput("text", self.recipient_agent.name, self.agent.name, message)
 
                 return message
-            
+
     def get_messages(self):
         if self.api_id:
             client = get_openai_client()
@@ -123,29 +124,17 @@ class Thread:
 
     def _execute_tool(self, tool_call, **kwargs):
         tools = self.recipient_agent.tools
-        tool = next((tool for tool in tools if tool.__class__.__name__ ==
+        tool = next((tool for tool in tools if tool.__name__ ==
                     tool_call.function.name), None)
 
         if not tool:
-            return f"Error: Tool {tool_call.function.name} not found. Available tools: {[tool.__class__.__name__ for tool in tools]}"
+            return f"Error: Tool {tool_call.function.name} not found. Available tools: {[tool.__name__ for tool in tools]}"
 
         try:
-            # Zero out all non-private fields
-            for attr in tool.__dict__:
-                if not attr.startswith('_'):
-                    setattr(tool, attr, None)
+            # init tool
+            tool = tool(**eval(tool_call.function.arguments))
 
-            # Set fields on the tool instance
-            arguments = eval(tool_call.function.arguments)
-            for attr, value in arguments.items():
-                setattr(tool, attr, value)
-
-            # Validate the tool model
-            tool = type(tool).model_validate(tool)
-
-            # get outputs from the tool
-            output = tool.run(**kwargs)
-
-            return output
+            # return outputs from the tool
+            return tool.run(**kwargs)
         except Exception as e:
             return "Error: " + str(e)

@@ -25,11 +25,11 @@ class Agent():
 
     @property
     def functions(self):
-        return [tool for tool in self.tools if isinstance(tool, BaseTool)]
+        return [tool for tool in self.tools if issubclass(tool, BaseTool)]
 
     def __init__(self, id: str = None, name: str = None, description: str = None, instructions: str = "",
-                 tools: List[Union[BaseTool, Retrieval,
-                                   CodeInterpreter]] = None,
+                 tools: List[Union[Type[BaseTool], Type[Retrieval],
+                                   Type[CodeInterpreter]]] = None,
                  files_folder: Union[List[str], str] = None,
                  file_ids: List[str] = None, metadata: Dict[str, str] = None, model: str = "gpt-4-1106-preview"):
         """
@@ -40,7 +40,7 @@ class Agent():
         name (str, optional): Name of the agent. Defaults to the class name if not provided.
         description (str, optional): A brief description of the agent's purpose. Defaults to None.
         instructions (str, optional): Path to a file containing specific instructions for the agent. Defaults to an empty string.
-        tools (List[Union[BaseTool, Retrieval, CodeInterpreter]], optional): A list of instantiated tools that the agent can use. Defaults to an empty list.
+        tools (List[Union[Type[BaseTool], Type[Retrieval], Type[CodeInterpreter]]], optional): A list of tools (as classes) that the agent can use. Defaults to an empty list.
         files_folder (Union[List[str], str], optional): Path or list of paths to directories containing files associated with the agent. Defaults to None.
         file_ids (List[str], optional): List of file IDs for files associated with the agent. Defaults to an empty list.
         metadata (Dict[str, str], optional): Metadata associated with the agent. Defaults to an empty dictionary.
@@ -297,22 +297,22 @@ class Agent():
             setattr(self, k, v)
 
     def add_tool(self, tool):
-        if not isinstance(tool, BaseTool):
-            raise Exception("Tool must be an instance of a tool class.")
-        if isinstance(tool, Retrieval):
+        if not isinstance(tool, type):
+            raise Exception("Tool must not be initialized.")
+        if issubclass(tool, Retrieval):
             # check that tools name is not already in tools
             for t in self.tools:
-                if isinstance(t, Retrieval):
+                if issubclass(t, Retrieval):
                     return
             self.tools.append(tool)
-        elif isinstance(tool, CodeInterpreter):
+        elif issubclass(tool, CodeInterpreter):
             for t in self.tools:
-                if isinstance(t, Retrieval):
+                if issubclass(t, Retrieval):
                     return
             self.tools.append(tool)
-        elif isinstance(tool, BaseTool):
+        elif issubclass(tool, BaseTool):
             for t in self.tools:
-                if t.__class__ == tool.__class__:
+                if t.__name__ == tool.__name__:
                     self.tools.remove(t)
             self.tools.append(tool)
         else:
@@ -332,14 +332,14 @@ class Agent():
     def get_oai_tools(self):
         tools = []
         for tool in self.tools:
-            if not isinstance(tool, BaseTool):
-                raise Exception("Tool must be an instance of a tool class.")
+            if not isinstance(tool, type):
+                raise Exception("Tool must not be initialized.")
 
-            if isinstance(tool, Retrieval):
-                tools.append(tool.model_dump())
-            elif isinstance(tool, CodeInterpreter):
-                tools.append(tool.model_dump())
-            elif isinstance(tool, BaseTool):
+            if issubclass(tool, Retrieval):
+                tools.append(tool().model_dump())
+            elif issubclass(tool, CodeInterpreter):
+                tools.append(tool().model_dump())
+            elif issubclass(tool, BaseTool):
                 tools.append({
                     "type": "function",
                     "function": tool.openai_schema

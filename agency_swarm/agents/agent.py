@@ -74,7 +74,7 @@ class Agent():
         agent = cls.__new__(cls)
         agent.id = agent_model.id
         agent.name = agent_model.name
-        agent.tools = agent_model.tools
+        agent.tools = agent_model.get_tools()
         return agent
 
     def init_oai(self):

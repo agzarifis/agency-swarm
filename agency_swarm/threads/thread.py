@@ -1,5 +1,6 @@
 import inspect
 import time
+import logging
 from typing import Union
 
 from agency_swarm.agents import Agent
@@ -80,21 +81,23 @@ class Thread:
                     if yield_messages:
                         yield MessageOutput("function", self.recipient_agent.name, self.agent.name, str(tool_call.function))
 
-                    output = self._execute_tool(tool_call, **kwargs)
-                    if inspect.isgenerator(output):
+                    agent_output, user_output = self._execute_tool(
+                        tool_call, **kwargs)
+                    if inspect.isgenerator(agent_output):
                         try:
                             while True:
-                                item = next(output)
+                                item = next(agent_output)
                                 if isinstance(item, MessageOutput) and yield_messages:
                                     yield item
                         except StopIteration as e:
-                            output = e.value
+                            agent_output = e.value
                     else:
                         if yield_messages:
+                            output = user_output if user_output is not None else agent_output
                             yield MessageOutput("function_output", tool_call.function.name, self.recipient_agent.name, output)
 
                     tool_outputs.append(
-                        {"tool_call_id": tool_call.id, "output": str(output)})
+                        {"tool_call_id": tool_call.id, "output": str(agent_output)})
 
                 # submit tool outputs
                 self.run = client.beta.threads.runs.submit_tool_outputs(
@@ -135,6 +138,11 @@ class Thread:
             tool = tool(**eval(tool_call.function.arguments))
 
             # return outputs from the tool
-            return tool.run(**kwargs)
+            output = tool.run(**kwargs)
+            if isinstance(output, tuple):
+                return output
+            else:
+                return output, None
         except Exception as e:
-            return "Error: " + str(e)
+            logging.error(e)
+            return "Error: " + str(e), None

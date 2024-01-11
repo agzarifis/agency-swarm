@@ -128,7 +128,7 @@ class Agent():
 
         self.id = self.assistant.id
 
-        self._save_settings()
+        # self._save_settings()
 
         return self
 

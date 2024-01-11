@@ -29,7 +29,7 @@ class Agency:
         """
         self.id = None
         self.user_proxy = None
-        self.agents = []
+        self.agents: list[Agent] = []
         self.agents_and_threads = {}
 
         if os.path.isfile(os.path.join(self.get_class_folder_path(), shared_instructions)):

@@ -126,7 +126,7 @@ class Thread:
             return client.beta.threads.messages.list(thread_id=self.api_id, order="asc", limit=100)
 
     def _execute_tool(self, tool_call, **kwargs):
-        tools = self.recipient_agent.tools
+        tools = self.recipient_agent.functions
         tool = next((tool for tool in tools if tool.__name__ ==
                     tool_call.function.name), None)
 

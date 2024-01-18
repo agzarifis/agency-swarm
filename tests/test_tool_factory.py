@@ -12,12 +12,8 @@ from agency_swarm.tools import ToolFactory
 from agency_swarm.util.schema import dereference_schema, reference_schema
 from langchain.tools import MoveFileTool, YouTubeSearchTool
 
-from agency_swarm.util import get_openai_client
-
 
 class ToolFactoryTest(unittest.TestCase):
-    def setUp(self):
-        self.client = get_openai_client()
 
     def test_move_file_tool(self):
         tool = ToolFactory.from_langchain_tool(MoveFileTool())

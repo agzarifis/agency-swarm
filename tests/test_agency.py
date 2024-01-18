@@ -8,7 +8,7 @@ import unittest
 sys.path.insert(0, '../agency-swarm')
 from agency_swarm.util import create_agent_template
 
-from agency_swarm import set_openai_key, Agent, Agency
+from agency_swarm import Agent, Agency
 
 
 class AgencyTest(unittest.TestCase):

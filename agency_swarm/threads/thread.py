@@ -29,7 +29,7 @@ class Thread:
         thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
         return thread
 
-    def get_completion(self, message: str, yield_messages=True, **kwargs):
+    def get_completion(self, message: str, message_files=None, yield_messages=True, **kwargs):
         client = get_openai_client()
         if not self.thread:
             if self.api_id:
@@ -37,6 +37,11 @@ class Thread:
             else:
                 self.thread = client.beta.threads.create()
                 self.api_id = self.thread.id
+
+            # Determine the sender's name based on the agent type
+            sender_name = "user" if isinstance(self.agent, User) else self.agent.name
+            playground_url = f'https://platform.openai.com/playground?assistant={self.recipient_agent._assistant.id}&mode=assistant&thread={self.thread.id}'
+            print(f'THREAD:[ {sender_name} -> {self.recipient_agent.name} ]: URL {playground_url}')
 
         # Check if a run is active
         if self.run and self.run.status in ['queued', 'in_progress']:
@@ -52,7 +57,8 @@ class Thread:
         client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
-            content=message
+            content=message,
+            file_ids=message_files if message_files else [],
         )
 
         if yield_messages:
@@ -79,7 +85,8 @@ class Thread:
                 tool_outputs = []
                 for tool_call in tool_calls:
                     if yield_messages:
-                        yield MessageOutput("function", self.recipient_agent.name, self.agent.name, str(tool_call.function))
+                        yield MessageOutput("function", self.recipient_agent.name, self.agent.name,
+                                            str(tool_call.function))
 
                     agent_output, user_output = self._execute_tool(
                         tool_call, **kwargs)
@@ -126,23 +133,26 @@ class Thread:
             return client.beta.threads.messages.list(thread_id=self.api_id, order="asc", limit=100)
 
     def _execute_tool(self, tool_call, **kwargs):
-        tools = self.recipient_agent.functions
-        tool = next((tool for tool in tools if tool.__name__ ==
-                    tool_call.function.name), None)
+        funcs = self.recipient_agent.functions
+        func = next((func for func in funcs if func.__name__ == tool_call.function.name), None)
 
-        if not tool:
-            return f"Error: Tool {tool_call.function.name} not found. Available tools: {[tool.__name__ for tool in tools]}"
+        if not func:
+            return f"Error: Function {tool_call.function.name} not found. Available functions: {[func.__name__ for func in funcs]}"
 
         try:
             # init tool
-            tool = tool(**eval(tool_call.function.arguments))
-
-            # return outputs from the tool
-            output = tool.run(**kwargs)
+            func = func(**eval(tool_call.function.arguments))
+            func.caller_agent = self.recipient_agent
+            
+            # get outputs from the tool
+            output = func.run(**kwargs)
             if isinstance(output, tuple):
                 return output
             else:
                 return output, None
         except Exception as e:
             logging.error(e)
-            return "Error: " + str(e), None
+            error_message = f"Error: {e}"
+            if "For further information visit" in error_message:
+                error_message = error_message.split("For further information visit")[0]
+            return error_message, None

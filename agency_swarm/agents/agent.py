@@ -226,7 +226,6 @@ class Agent():
             self.instructions = f.read()
 
     def _upload_files(self):
-        client = get_openai_client()
         if isinstance(self.files_folder, str):
             f_path = self.files_folder
 
@@ -251,6 +250,7 @@ class Agent():
                         print("Uploading new file... " +
                               os.path.basename(f_path))
                         with open(f_path, 'rb') as f:
+                            client = get_openai_client()
                             file_id = client.files.create(
                                 file=f, purpose="assistants").id
                             self.file_ids.append(file_id)

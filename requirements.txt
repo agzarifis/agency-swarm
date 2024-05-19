@@ -1,6 +1,7 @@
-openai==1.6.1
-instructor==0.3.4
+openai==1.27.0
+instructor==1.2.6
 deepdiff==6.7.1
 termcolor==2.3.0
 python-dotenv==1.0.0
 rich==13.7.0
+jsonref==1.1.0

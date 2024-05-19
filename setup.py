@@ -6,28 +6,22 @@ with open('requirements.txt') as f:
 
 setup(
     name='agency-swarm',
-    version='0.1.0',
+    version='0.2.2',
     author='VRSEN',
     author_email='arseny9795@gmail.com',
-    description='Replace your own agency with an agent swarm.',
-    long_description=open('README.md').read(),
+    description='An opensource agent orchestration framework built on top of the latest OpenAI Assistants API.',
+    long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/VRSEN/agency-swarm',
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests', 'tests.*']),
     install_requires=requirements,
     classifiers=[
-        # Classifiers help users find your project by categorizing it
-        'Development Status :: 3 - Alpha',  # Change as appropriate
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
-        'License :: OSI Approved :: MIT License',  # Choose the appropriate license
-        'Programming Language :: Python :: 3',  # Specify which pyhton versions you support
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
+        'License :: OSI Approved :: MIT License',
     ],
     entry_points = {
         'console_scripts': ['agency-swarm=agency_swarm.cli:main'],
     },
-    python_requires='>=3.7',  # Specify the Python version requirements
+    python_requires='>=3.7',
 )

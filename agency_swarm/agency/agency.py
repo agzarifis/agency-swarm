@@ -109,6 +109,17 @@ class Agency:
         self._init_agents()
         self._init_threads()
 
+        
+    @classmethod
+    def from_model(cls, agency_model):
+        agency = cls.__new__(cls)
+        agency.id = agency_model.id
+        # agency.user_proxy = Agent.from_model(agency_model.user_proxy)
+        # agency.agents = [Agent.from_model(agent_model) for agent_model in agency_model.agents]
+        agency.main_thread = Thread.from_model(agency_model.main_thread)
+        return agency
+      
+      
     def get_completion(self, message: str,
                        message_files: List[str] = None,
                        yield_messages: bool = False,
@@ -116,7 +127,7 @@ class Agency:
                        additional_instructions: str = None,
                        attachments: List[dict] = None,
                        tool_choice: dict = None,
-                       ):
+                       **kwargs):
         """
         Retrieves the completion for a given message from the main thread.
 
@@ -138,7 +149,8 @@ class Agency:
                                                recipient_agent=recipient_agent,
                                                additional_instructions=additional_instructions,
                                                tool_choice=tool_choice,
-                                               yield_messages=yield_messages)
+                                               yield_messages=yield_messages,
+                                               **kwargs)
 
         if not yield_messages:
             while True:
@@ -157,8 +169,8 @@ class Agency:
                               recipient_agent: Agent = None,
                               additional_instructions: str = None,
                               attachments: List[dict] = None,
-                              tool_choice: dict = None
-                              ):
+                              tool_choice: dict = None,
+                              **kwargs):
         """
         Generates a stream of completions for a given message from the main thread.
 
@@ -183,8 +195,8 @@ class Agency:
                                                       attachments=attachments,
                                                       recipient_agent=recipient_agent,
                                                       additional_instructions=additional_instructions,
-                                                      tool_choice=tool_choice
-                                                      )
+                                                      tool_choice=tool_choice,
+                                                      **kwargs)
 
         while True:
             try:
@@ -678,7 +690,7 @@ class Agency:
             agency_chart: A structure representing the hierarchical organization of agents within the agency.
                     It can contain Agent objects and lists of Agent objects.
 
-        This method iterates through each node in the agency chart. If a node is an Agent, it is set as the CEO if not already assigned.
+        This method iterates through each node in the agency chart. If a node is an Agent, it is set as the User Proxy if not already assigned.
         If a node is a list, it iterates through the agents in the list, adding them to the agency and establishing communication
         threads between them. It raises an exception if the agency chart is invalid or if multiple CEOs are defined.
         """
@@ -805,7 +817,8 @@ class Agency:
             SendMessage: A SendMessage tool class that is dynamically created and configured for the given agent and its recipient agents. This tool allows the agent to send messages to the specified recipients, facilitating inter-agent communication within the agency.
         """
         recipient_names = [agent.name for agent in recipient_agents]
-        recipients = Enum("recipient", {name: name for name in recipient_names})
+        recipients = Enum(
+            "recipient", {name: name for name in recipient_names})
 
         agent_descriptions = ""
         for recipient_agent in recipient_agents:
@@ -847,7 +860,8 @@ class Agency:
             @field_validator('recipient')
             def check_recipient(cls, value):
                 if value.value not in recipient_names:
-                    raise ValueError(f"Recipient {value} is not valid. Valid recipients are: {recipient_names}")
+                    raise ValueError(
+                        f"Recipient {value} is not valid. Valid recipients are: {recipient_names}")
                 return value
 
             def run(self):

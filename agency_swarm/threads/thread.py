@@ -17,16 +17,27 @@ from agency_swarm.util.oai import get_openai_client
 
 
 class Thread:
-    id: str = None
+    id = None
+    api_id: str = None
     thread = None
     run = None
     stream = None
 
-    def __init__(self, agent: Literal[Agent, User], recipient_agent: Agent):
+    def __init__(self, agent: Union[Agent, User], recipient_agent: Agent):
         self.agent = agent
         self.recipient_agent = recipient_agent
 
         self.client = get_openai_client()
+        
+    @classmethod
+    def from_model(cls, thread_model):
+        thread = cls.__new__(cls)
+        thread.id = thread_model.id
+        thread.api_id = thread_model.api_id
+        thread.agent = User() if thread_model.agent is None else Agent.from_model(
+            thread_model.agent)
+        thread.recipient_agent = Agent.from_model(thread_model.recipient_agent)
+        return thread
 
     def init_thread(self):
         if self.id:
@@ -49,7 +60,8 @@ class Thread:
                               attachments: Optional[List[Attachment]] = None,
                               recipient_agent=None,
                               additional_instructions: str = None,
-                              tool_choice: AssistantToolChoice = None):
+                              tool_choice: AssistantToolChoice = None,
+                              **kwargs):
 
         return self.get_completion(message,
                                    message_files,
@@ -58,7 +70,8 @@ class Thread:
                                    additional_instructions,
                                    event_handler,
                                    tool_choice,
-                                   yield_messages=False)
+                                   yield_messages=False,
+                                   **kwargs)
 
     def get_completion(self,
                        message: str,
@@ -68,8 +81,8 @@ class Thread:
                        additional_instructions: str = None,
                        event_handler: type(AgencyEventHandler) = None,
                        tool_choice: AssistantToolChoice = None,
-                       yield_messages: bool = False
-                       ):
+                       yield_messages: bool = False,
+                       **kwargs):
         if yield_messages:
             # warn that it is deprecated
             print("Warning: yield_messages is deprecated. Use get_completion_stream instead.")
@@ -105,7 +118,7 @@ class Thread:
         print(f'THREAD:[ {sender_name} -> {recipient_agent.name} ]: URL {playground_url}')
 
         # send message
-        self.client.beta.threads.messages.create(
+        client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
             content=message,
@@ -133,15 +146,15 @@ class Thread:
                         yield MessageOutput("function", recipient_agent.name, self.agent.name,
                                             str(tool_call.function))
 
-                    output = self.execute_tool(tool_call, recipient_agent, event_handler, tool_names)
+                    output = self.execute_tool(tool_call, recipient_agent, event_handler, tool_names, **kwargs)
                     if inspect.isgenerator(output):
                         try:
                             while True:
-                                item = next(output)
+                                item = next(agent_output)
                                 if isinstance(item, MessageOutput) and yield_messages:
                                     yield item
                         except StopIteration as e:
-                            output = e.value
+                            agent_output = e.value
                     else:
                         if yield_messages:
                             yield MessageOutput("function_output", tool_call.function.name, recipient_agent.name,
@@ -331,7 +344,12 @@ class Thread:
             # get outputs from the tool
             output = func.run()
 
-            return output
+            # return outputs from the tool
+            output = tool.run(**kwargs)
+            if isinstance(output, tuple):
+                return output
+            else:
+                return output, None
         except Exception as e:
             error_message = f"Error: {e}"
             if "For further information visit" in error_message:

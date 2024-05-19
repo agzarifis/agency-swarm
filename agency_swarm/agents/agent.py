@@ -26,7 +26,8 @@ class Agent():
     @property
     def assistant(self):
         if self._assistant is None:
-            raise Exception("Assistant is not initialized. Please run init_oai() first.")
+            raise Exception(
+                "Assistant is not initialized. Please run init_oai() first.")
         return self._assistant
 
     @assistant.setter
@@ -148,6 +149,14 @@ class Agent():
 
     # --- OpenAI Assistant Methods ---
 
+    @classmethod
+    def from_model(cls, agent_model):
+        agent = cls.__new__(cls)
+        agent.id = agent_model.id
+        agent.name = agent_model.name
+        agent.tools = agent_model.get_tools()
+        return agent
+
     def init_oai(self):
         """
         Initializes the OpenAI assistant for the agent.
@@ -160,6 +169,7 @@ class Agent():
 
         # check if settings.json exists
         path = self.get_settings_path()
+        client = get_openai_client()
 
         # load assistant from id
         if self.id:
@@ -221,7 +231,7 @@ class Agent():
 
         self.id = self.assistant.id
 
-        self._save_settings()
+        # self._save_settings()
 
         return self
 
@@ -249,7 +259,8 @@ class Agent():
             "model": self.model
         }
         params = {k: v for k, v in params.items() if v}
-        self.assistant = self.client.beta.assistants.update(
+        client = get_openai_client()
+        self.assistant = client.beta.assistants.update(
             self.id,
             **params,
         )
@@ -633,7 +644,8 @@ class Agent():
         if self._shared_instructions is None:
             self._shared_instructions = instructions
         else:
-            self.instructions = self.instructions.replace(self._shared_instructions, "")
+            self.instructions = self.instructions.replace(
+                self._shared_instructions, "")
             self.instructions = self.instructions.strip().strip("\n")
             self._shared_instructions = instructions
 

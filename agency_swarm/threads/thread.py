@@ -1,7 +1,7 @@
 import inspect
 import json
 import time
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Union
 
 from openai import BadRequestError
 from openai.types.beta import AssistantToolChoice
